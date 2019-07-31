@@ -1,35 +1,53 @@
+import 'ol/ol.css'
+import './App.css'
+
 import React, { Component } from 'react'
-import logo from './logo.svg'
-import { Map, View } from 'ol'
+
 import TileLayer from 'ol/layer/Tile'
-import { Vector as VectorLayer } from 'ol/layer'
+import VectorLayer from 'ol/layer/Vector'
 import VectorSource from 'ol/source/Vector'
 import OSM from 'ol/source/OSM'
 import Feature from 'ol/Feature'
 import Point from 'ol/geom/Point'
+import { Map, View } from 'ol'
 import { fromLonLat } from 'ol/proj'
+import {Circle as CircleStyle, Icon, Style, Fill, Stroke} from 'ol/style.js';
+
 import { Typography, Select, FormControl, InputLabel, MenuItem, Button } from '@material-ui/core'
-import './App.css'
 import { MuiPickersUtilsProvider, KeyboardDatePicker } from '@material-ui/pickers'
 import format from'date-fns/format'
 import DateFnsUtils from '@date-io/date-fns';
+import { toStringHDMS } from 'ol/coordinate';
 
-const servername = 'http://34.94.21.176:3000'
+const servername = 'http://34.94.21.176:3000'     // Global const for servername.
+
 class App extends Component {
   // initial state
   state = {
     waypoints: [],
     planes: [],
     selectedPlane: 'null',
-    maintenanceDate: new Date()
+    maintenanceDate: new Date(),
+    selectedAirport: 'null',
+    currentWeather: 'null'
   }
+
+  vectorSource = new VectorSource({
+    features: [],
+    wrapX: false
+  })
+
+  vectorLayer = new VectorLayer({
+    source: this.vectorSource,
+  })
+  
 
   map = new Map({
     layers: [
       new TileLayer({
         source: new OSM()
       }),
-      this.vectorLayer
+      this.vectorLayer,
     ],
     view: new View({
       center: fromLonLat([-98.5795,38]),
@@ -37,22 +55,15 @@ class App extends Component {
     })
   })
 
-  vectorLayer = new VectorLayer({
-    source: this.vectorSource,
-    renderBuffer: 200
-  })
-
-  vectorSource = new VectorSource({
-    features: this.state.waypoints
-  })
-
+  // Default React Lifecycle function (refer in React documentation)
   componentDidMount() {
     this.map.setTarget('map')
-    this.fetchData()
-    this.map.renderSync()
     this.map.on('click', this.showWeather.bind(this))
+    this.map.renderSync()
+    this.fetchData()
   }
   
+  // Gets all data from backend in one go (asynchronous). Read about promises if confused.
   fetchData() {
     fetch(`${servername}/getallplanes`)
     .then(res => res.json())
@@ -67,21 +78,25 @@ class App extends Component {
     })
   }
 
+  // Helper function to add features into openlayers.
   addFeatures() {
     this.state.waypoints.forEach(waypoint => {
-      this.vectorSource.addFeature(new Feature({
+      let longitude = parseFloat(waypoint.lonlat[0])
+      let latitude = parseFloat(waypoint.lonlat[1])
+      this.vectorLayer.getSource().addFeature(new Feature({
+        geometry: new Point(fromLonLat([longitude,latitude])),
         information: waypoint.airport,
-        geometry: new Point(fromLonLat(waypoint.lonlat))
       }))
-      console.log(this.vectorSource.getFeatures())
-      console.log(this.vectorLayer.getSource())
     })
   }
 
+  // Adds a <MenuItem> object. Helper function called by map().
   addPlane(plane, index) {
     return <MenuItem value={index}>{plane.name}</MenuItem>
   }
 
+  // Handles change. Read up on event listeners. Looks for event target (based on id), 
+  // then sets value based on new value.
   handleChange(event) {
     console.log(event.target.name)
     this.setState({
@@ -89,14 +104,41 @@ class App extends Component {
     })
   }
 
-  showWeather(event) {
-    let features = this.map.getFeaturesAtPixel(event.pixel)
+  // Fetch request to get weather
+  getWeather(lonlat) {
+    console.log(`${servername}/getweatherbycity/${lonlat[0]}/${lonlat[1]}`)
+    fetch(`${servername}/getweatherbycity/${lonlat[0]}/${lonlat[1]}`)
+    .then(res => {
+      console.log(res)
+      return res.json()
+    })
+    .then(data => {
+      console.log(data)
+      this.setState({currentWeather: data})
+    })
   }
 
+  // Event listener that waits for an 'onClick' event from OpenLayers.
+  showWeather(event) {
+    let features = this.map.getFeaturesAtPixel(event.pixel)
+    if(!features) return 
+    let properties = features[0].getProperties()
+    console.log(properties)
+    this.setState({selectedAirport: properties.information})
+    this.state.waypoints.forEach(waypoint => {
+      if(waypoint.airport === properties.information) {
+        this.getWeather.bind(this)
+        this.getWeather(waypoint.lonlat)
+      }
+    })
+  }
+
+  // Helper function called by map to output maintenance records in typography.
   outputMaintenanceRecords(date) {
     return <Typography variant='subtitle2'>{date}</Typography>
   }
 
+  // Handler for onClick event from 'submit maintenance' button.
   submitMaintenance() {
     if(this.state.selectedPlane =='null' ) {
       alert('Select a plane in Aircraft Info FIRST.')
@@ -116,12 +158,21 @@ class App extends Component {
     }).then(()=>this.fetchData())
   }
 
+  // React Lifecycle method. Read up on React if confused.
   render() {
     return (
       <div className="App">
         <div className="left-side">
           <div id="flightPlan">
             <Typography variant="h6">Flight Plan</Typography>
+            <Typography variant="body1">Airport:</Typography>
+            <Typography variant='subtitle2'>{(this.state.selectedAirport != 'null') }</Typography>
+            <Typography variant='body1'>Current Weather:</Typography>
+            <Typography variant='subtitle2'>{(this.state.currentWeather != 'null') ? this.state.currentWeather.description : 'No airport selected.'}</Typography>
+            <Typography variant='body1'>Wind Speed:</Typography>
+            <Typography variant='subtitle2'>{(this.state.currentWeather != 'null') ? this.state.currentWeather['wind-speed'] : 'No airport selected.'}</Typography>
+            <Typography variant='body1'>Wind Degrees:</Typography>
+            <Typography variant='subtitle2'>{(this.state.currentWeather != 'null') ? this.state.currentWeather['wind-degrees']: 'No airport selected.'}</Typography>
           </div>
           <div id="AircraftInfo">
             <Typography variant="h6">Aircraft Info</Typography>
@@ -172,3 +223,6 @@ class App extends Component {
 }
 
 export default App
+
+// Written by Matthew Wong 
+// github.com/wongcoder

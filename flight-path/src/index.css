@@ -31,7 +31,6 @@ div {
   justify-content: space-evenly;
   padding: 40px;
   min-width: 0;
-  background-color: orange;
   min-height: 0;
 }
 
@@ -52,6 +51,5 @@ div {
 }
 
 #flightPlan {
-  background-color: yellowgreen;
 
 }
