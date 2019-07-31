@@ -3,6 +3,7 @@ import './App.css'
 
 import React, { Component } from 'react'
 
+// OpenLayer imports
 import TileLayer from 'ol/layer/Tile'
 import VectorLayer from 'ol/layer/Vector'
 import VectorSource from 'ol/source/Vector'
@@ -11,37 +12,41 @@ import Feature from 'ol/Feature'
 import Point from 'ol/geom/Point'
 import { Map, View } from 'ol'
 import { fromLonLat } from 'ol/proj'
-import {Circle as CircleStyle, Icon, Style, Fill, Stroke} from 'ol/style.js';
 
+// Material UI imports
 import { Typography, Select, FormControl, InputLabel, MenuItem, Button } from '@material-ui/core'
+
+// Date picker
 import { MuiPickersUtilsProvider, KeyboardDatePicker } from '@material-ui/pickers'
 import format from'date-fns/format'
 import DateFnsUtils from '@date-io/date-fns';
-import { toStringHDMS } from 'ol/coordinate';
 
 const servername = 'http://34.94.21.176:3000'     // Global const for servername.
 
 class App extends Component {
+
   // initial state
   state = {
-    waypoints: [],
-    planes: [],
-    selectedPlane: 'null',
-    maintenanceDate: new Date(),
-    selectedAirport: 'null',
-    currentWeather: 'null'
+    waypoints: [],                // Generic waypoints for airports, populated by fetch.
+    planes: [],                   // All planes, populated by fetch.
+    selectedPlane: 'null',        // Currently selected plane. Updated by event handler.
+    maintenanceDate: new Date(),  
+    selectedAirport: 'null',      
+    currentWeather: 'null'  
   }
 
+  // OpenLayers function to store sources from features.
   vectorSource = new VectorSource({
     features: [],
     wrapX: false
   })
 
+  // OpenLayers API. Captures vector source, and places it on a layer.
   vectorLayer = new VectorLayer({
     source: this.vectorSource,
   })
   
-
+  // Function in charge of loading and maintaining the map. Map - OpenLayers API.
   map = new Map({
     layers: [
       new TileLayer({
@@ -57,9 +62,9 @@ class App extends Component {
 
   // Default React Lifecycle function (refer in React documentation)
   componentDidMount() {
-    this.map.setTarget('map')
-    this.map.on('click', this.showWeather.bind(this))
-    this.map.renderSync()
+    this.map.setTarget('map')                         // sets div id='map' to show map.
+    this.map.on('click', this.showWeather.bind(this)) // binds event handler
+    this.map.renderSync()                             // view openlayers doc
     this.fetchData()
   }
   
