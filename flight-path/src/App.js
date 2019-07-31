@@ -166,7 +166,7 @@ class App extends Component {
           <div id="flightPlan">
             <Typography variant="h6">Flight Plan</Typography>
             <Typography variant="body1">Airport:</Typography>
-            <Typography variant='subtitle2'>{(this.state.selectedAirport != 'null') }</Typography>
+            <Typography variant='subtitle2'>{(this.state.selectedAirport != 'null') ? this.state.selectedAirport : 'No airport selected.' }</Typography>
             <Typography variant='body1'>Current Weather:</Typography>
             <Typography variant='subtitle2'>{(this.state.currentWeather != 'null') ? this.state.currentWeather.description : 'No airport selected.'}</Typography>
             <Typography variant='body1'>Wind Speed:</Typography>
